@@ -10,7 +10,7 @@ export class IfConfigUtils {
 			let newInterface: IDataObject = {};
 
 			const regex =
-				/^\t*inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+netmask ((?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})|(?:0x[a-fA-F0-9]+))\s+broadcast (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/;
+				/^\s*inet\s*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s*netmask\s*((?:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})|(?:0x[a-fA-F0-9]+))\s*broadcast\s*(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/;
 			const match = line.match(regex);
 			if (match !== null) {
 				//console.log(match);

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-my-local-ip",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "My Local Ip",
   "keywords": [
     "Ifconfig", "Scan", "SecOps", "Zubial", "n8n-community-node-package"
@@ -36,10 +36,7 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "nodes": [
-      "dist/nodes/NmapScan/NmapScan.node.js"
-    ],
-    "credentials": [
-      "dist/credentials/OnlyPassword.credentials.js"
+      "dist/nodes/MyLocalIp/MyLocalIp.node.js"
     ]
   },
   "devDependencies": {

@@ -1,5 +1,11 @@
+## 1.0.5
+
+### Features
+
+* More details like subnet
+
 ## 1.0.0
 
 ### Features
 
-* Local IP (ifconfig -a <interface>)
+* Get Local IP

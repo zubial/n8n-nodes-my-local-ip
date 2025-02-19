@@ -4,10 +4,10 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeConnectionType,
-	NodeOperationError,
 } from 'n8n-workflow';
-import { ShellUtils } from './utils/ShellUtils';
-import { IfConfigUtils } from './utils/IfConfigUtils';
+import { MyLocalIpResult } from './models/MyLocalIpResult';
+import * as os from 'node:os';
+import ip from 'ip';
 
 export class MyLocalIp implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,13 +32,13 @@ export class MyLocalIp implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Get My Local IP Address',
-						value: 'local_ipv4',
-						description: 'Get my local IP address (ifconfig -a &lt;interface&gt;)',
-						action: 'Get my local IP address',
+						name: 'Get My Local IP',
+						value: 'local_ip',
+						description: 'Get my local IP address',
+						action: 'Get my local IP',
 					},
 				],
-				default: 'local_ipv4',
+				default: 'local_ip',
 			},
 			{
 				displayName: 'Network Interface',
@@ -46,6 +46,37 @@ export class MyLocalIp implements INodeType {
 				type: 'string',
 				default: '',
 				description: 'Define the network interface',
+			},
+			{
+				displayName: 'Version',
+				name: 'version',
+				type: 'options',
+				required: true,
+				options: [
+					{
+						name: 'IP V4',
+						value: 'local_ipv4',
+						action: 'Get my local ipv4',
+					},
+					{
+						name: 'IP V6',
+						value: 'local_ipv6',
+						action: 'Get my local ipv6',
+					},
+					{
+						name: 'Both IP V4/V6',
+						value: 'both_ipv4/6',
+						action: 'Get my local ipv4/ipv6',
+					},
+				],
+				default: 'local_ipv4',
+			},
+			{
+				displayName: 'Only External IP',
+				name: 'only_external_ip',
+				type: 'boolean',
+				default: false,
+				description: 'Get only external IP address',
 			},
 			{
 				displayName: 'Options',
@@ -58,7 +89,7 @@ export class MyLocalIp implements INodeType {
 						displayName: 'Put Result in Field',
 						name: 'result_field',
 						type: 'string',
-						default: 'local_ip',
+						default: 'local',
 						description: 'The name of the output field to put the data in',
 					},
 				],
@@ -68,49 +99,45 @@ export class MyLocalIp implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		let item: INodeExecutionData;
-		const returnItems: INodeExecutionData[] = [];
 
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			item = { ...items[itemIndex] };
-			const newItem: INodeExecutionData = {
-				json: item.json,
-				pairedItem: {
-					item: itemIndex,
-				},
-			};
+		// Parameters & Options
+		//const operation = this.getNodeParameter('operation', 0);
+		const network_interface = this.getNodeParameter('network_interface', 0) as string;
+		const version = this.getNodeParameter('version', 0) as string;
+		const only_external_ip = this.getNodeParameter('only_external_ip', 0) as boolean;
 
-			// Parameters & Options
-			const operation = this.getNodeParameter('operation', itemIndex);
-			const network_interface = this.getNodeParameter('network_interface', itemIndex) as string;
-			const options = this.getNodeParameter('options', itemIndex);
-			const result_field = options.result_field ? (options.result_field as string) : 'local_ip';
+		const options = this.getNodeParameter('options', 0);
+		const result_field = options.result_field ? (options.result_field as string) : 'local';
 
-			let command: string = `ifconfig -a ${network_interface}`;
+		const interfaces = os.networkInterfaces();
+		const result: MyLocalIpResult = new MyLocalIpResult();
 
-			console.log(`Command starting ${command}`);
-
-			const shellUtils = new ShellUtils();
-			const ifConfigUtils = new IfConfigUtils();
-
-			const workingDirectory = await shellUtils.resolveHomeFolder('~/');
-			console.log(workingDirectory);
-
-			await shellUtils
-				.command(command, workingDirectory)
-				.then((output) => {
-					console.log(`Command done ${command}`);
-
-					if (operation === 'local_ipv4') {
-						newItem.json[result_field] = ifConfigUtils.parseIfConfigIpv4(output);
-						returnItems.push(newItem);
+		for (const interfaceName in interfaces) {
+			for (const iface of interfaces[interfaceName]!) {
+				if (network_interface == '' || network_interface == interfaceName) {
+					if (!only_external_ip || (only_external_ip && !iface.internal)) {
+						if (
+							version == 'both_ipv4/6' ||
+							(version == 'local_ipv4' && iface.family == 'IPv4') ||
+							(version == 'local_ipv6' && iface.family == 'IPv6')
+						) {
+							result.interfaces.push({
+								hostname: os.hostname(),
+								family: iface.family,
+								interface: interfaceName,
+								address: iface.address,
+								mac: iface.mac,
+								internal: iface.internal,
+								subnet: ip.subnet(iface.address, iface.netmask),
+							});
+						}
 					}
-				})
-				.catch((e) => {
-					throw new NodeOperationError(this.getNode(), e);
-				});
+				}
+			}
 		}
 
-		return [returnItems];
+		items.forEach((item) => (item.json[result_field] = result));
+
+		return [items];
 	}
 }
